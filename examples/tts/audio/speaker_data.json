@@ -1,0 +1,10 @@
+{
+  "leijun": {
+    "audio": "./examples/tts/audio/train_leijun.wav",
+    "prompt_text": "今天呢，我就先和大家聊聊，五大往事。"
+  },
+  "liudehua": {
+    "audio": "./examples/tts/audio/train_liudehua.wav",
+    "prompt_text": "我是一个认真工作的普通人。"
+  }
+}
