@@ -2,6 +2,8 @@
 
 import os
 import sys
+import wave
+import numpy as np
 
 sys.path.append('./')
 sys.path.append('./third_party/Matcha-TTS')
@@ -96,8 +98,18 @@ for text in tts_text_list:
     for i, j in enumerate(tts_sft(text, speaker_info=spk2info[speaker], stream=False, speed=1.2)):
         # 保存生成的语音到文件，文件名包含文本的前四个字符
         print('打印处理时间:', i, time.time() - start)
-        torchaudio.save(current_dir + '/audio/test_{}_{}.wav'.format(
-            i, speaker), j['tts_speech'], cosyvoice.sample_rate)
+        output_path = current_dir + '/audio/test_{}_{}.wav'.format(i, speaker)
+        
+        # torchaudio.save(output_path, j['tts_speech'], cosyvoice.sample_rate)
+
+
+        audio_data = (j['tts_speech'].numpy() * 32767).astype(np.int16)
+        with wave.open(output_path, 'wb') as wf:
+            wf.setnchannels(1)  # Mono audio
+            wf.setsampwidth(2)  # 16-bit
+            wf.setframerate(cosyvoice.sample_rate)
+            wf.writeframes(audio_data.tobytes())
+        
     # 打印处理时间
     print('打印处理时间:', time.time() - start)
 
