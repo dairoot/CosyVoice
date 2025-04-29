@@ -1,7 +1,10 @@
 # https://doupoa.site/archives/595
 
+import asyncio
 import os
 import sys
+import torchaudio
+import websockets
 
 sys.path.append('./')
 sys.path.append('./third_party/Matcha-TTS')
@@ -11,11 +14,9 @@ import time
 
 import json
 import torch
-import torchaudio
 from tqdm import tqdm
 
 from cosyvoice.cli.cosyvoice import CosyVoice2
-from cosyvoice.utils.file_utils import load_wav
 
 with open('./examples/tts/audio/speaker_data.json', 'r', encoding='utf-8') as file:
     speaker_dict = json.load(file)
@@ -27,7 +28,7 @@ sys.path.append('third_party/Matcha-TTS')
 start = time.time()
 # 初始化CosyVoice2模型，指定预训练模型路径，不加载jit和trt模型，使用fp32
 
-cosyvoice = CosyVoice2('iic/CosyVoice2-0.5B', load_jit=False, load_trt=False, fp16=False, use_flow_cache=False)
+cosyvoice = CosyVoice2('iic/CosyVoice2-0.5B', load_jit=False, load_trt=False, fp16=False, use_flow_cache=True)
 
 # 设置最大音量
 max_val = 0.8
@@ -85,20 +86,34 @@ def tts_sft(tts_text, speaker_info: dict, stream=False, speed=1.0, text_frontend
             yield model_output
 
 
+def test_tts():
+    text = ["收到好友从远方寄来的生日礼物，", "那份意外的惊喜与深", "深的祝福让我心中充满了甜蜜的快乐，笑容如花儿般绽放。"]
+    text = ["收到好友从远方寄来的生日礼物，"]
 
-tts_text_list = ["收到好友从远方寄来的生日礼物，那份意外的惊喜与深深的祝福让我心中充满了甜蜜的快乐，笑容如花儿般绽放。", ]
+    # 初始化一个列表来收集音频块
+    audio_chunks = []
+    for c in text:
+        for i, j in enumerate(tts_sft(c, speaker_info=spk2info[speaker], stream=True, speed=1.2, text_frontend=True)):
+            audio_chunks.append(j['tts_speech'])
 
-# 遍历文本列表
-for text in tts_text_list:
-    # 记录开始时间
-    start = time.time()
-    # 遍历每个文本的生成结果
-    for i, j in enumerate(tts_sft(text, speaker_info=spk2info[speaker], stream=False, speed=1.2)):
-        # 保存生成的语音到文件，文件名包含文本的前四个字符
-        print('打印处理时间:', i, time.time() - start)
-        torchaudio.save(current_dir + '/audio/test_{}_{}.wav'.format(
-            i, speaker), j['tts_speech'], cosyvoice.sample_rate)
-    # 打印处理时间
-    print('打印处理时间:', time.time() - start)
+    # 将音频块合并为一个完整的音频文件
+    torchaudio.save('./output.wav', torch.cat(audio_chunks,dim=1), sample_rate=cosyvoice.sample_rate)
 
 
+async def echo(websocket, path):
+    async for message in websocket:
+        print(f"Received: {message}")
+        for i, j in enumerate(tts_sft(message, speaker_info=spk2info[speaker], stream=True, speed=1.2)):
+            audio_bytes = j['tts_speech'].numpy().tobytes()
+            await websocket.send(audio_bytes)
+
+
+async def main():
+    server = await websockets.serve(echo, "localhost", 8765)
+    print("WebSocket server started at ws://localhost:8765")
+    await server.wait_closed()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+    # test_tts()
