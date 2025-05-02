@@ -100,17 +100,18 @@ def test_tts():
     torchaudio.save('./output.wav', torch.cat(audio_chunks,dim=1), sample_rate=cosyvoice.sample_rate)
 
 
-async def echo(websocket, path):
+async def echo(websocket):
     async for message in websocket:
         print(f"Received: {message}")
         for i, j in enumerate(tts_sft(message, speaker_info=spk2info[speaker], stream=True, speed=1.2)):
             audio_bytes = j['tts_speech'].numpy().tobytes()
             await websocket.send(audio_bytes)
+        # Send termination signal after all audio chunks are sent
+        await websocket.send(b"END_OF_AUDIO")
 
 
 async def main():
-    server = await websockets.serve(echo, "localhost", 8765)
-    print("WebSocket server started at ws://localhost:8765")
+    server = await websockets.serve(echo, "0.0.0.0", 8765)
     await server.wait_closed()
 
 
