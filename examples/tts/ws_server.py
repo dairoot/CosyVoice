@@ -3,6 +3,9 @@ import sys
 
 import torchaudio
 import websockets
+import string
+import random
+import logging
 
 sys.path.append('./')
 sys.path.append('./third_party/Matcha-TTS')
@@ -14,6 +17,8 @@ import json
 import torch
 
 from cosyvoice.cli.cosyvoice import CosyVoice2
+
+logging.getLogger().setLevel(logging.CRITICAL + 1)  # 设置一个高于 CRITICAL 的级别
 
 with open('./examples/tts/audio/speaker_data.json', 'r', encoding='utf-8') as file:
     speaker_dict = json.load(file)
@@ -39,10 +44,14 @@ spk2info = torch.load(spk2info_path, map_location=cosyvoice.frontend.device)
 
 print("spk2info", spk2info.keys())
 
+def get_random_string(length):
+    letters = string.ascii_lowercase + string.digits + string.ascii_uppercase
+    result_str = ''.join(random.choice(letters) for _ in range(length))
+    return result_str
+
 
 # 定义一个文本到语音的函数，参数包括文本内容、是否流式处理、语速和是否使用文本前端处理
 def tts_sft(tts_text, stream=False, speed=1.0):
-    print("tts_text", tts_text)
     speaker_info = spk2info[speaker]
     # 提取文本的token和长度
     tts_text_token, tts_text_token_len = cosyvoice.frontend._extract_text_token(tts_text)
@@ -99,8 +108,9 @@ def test_tts():
 # 定义一个函数，用于获取websocket消息
 def get_ws_message(websocket):
     # 遍历websocket消息
+    message_id = get_random_string(8)
     for message in websocket:
-        print(f"Received: {message}", type(message))
+        print(f"Received: {message_id}: {message}")
         if message == "END_OF_AUDIO":
             break
         yield message
@@ -110,6 +120,7 @@ def echo(websocket):
     for j in tts_sft(get_ws_message(websocket), stream=True, speed=1.2):
         audio_bytes = j['tts_speech'].numpy().tobytes()
         websocket.send(audio_bytes)
+
 
     websocket.send(b"END_OF_AUDIO")
 
