@@ -22,7 +22,12 @@ async def connect():
     uri = "ws://localhost:8765"
     async with websockets.connect(uri) as websocket:
         # Send the message to server
-        await websocket.send("你好啊，你是什么模型，我需要你帮我检测一下音频中的语音活动，")
+        await websocket.send("你好啊，你是什么模型")
+        await websocket.send("型，我需要你帮我检")
+        await websocket.send("测一下音频中的语")
+        await websocket.send("音活动")
+
+        await websocket.send("END_OF_AUDIO")
 
         while True:
             audio_data = await websocket.recv()
