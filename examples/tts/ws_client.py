@@ -18,19 +18,18 @@ wf2.setframerate(48000)  # Sample rate
 resampler = av.AudioResampler(format='s16', layout='stereo', rate=48000)
 
 
-async def connect():
-    uri = "ws://localhost:8765"
-    async with websockets.connect(uri) as websocket:
-        # Send the message to server
-        await websocket.send("你好啊，你是什么模型")
-        await websocket.send("型，我需要你帮我检")
-        await websocket.send("测一下音频中的语")
-        await websocket.send("音活动")
+class TtsClient:
+    def __init__(self):
+        pass
 
-        await websocket.send("END_OF_AUDIO")
+    async def async_init(self):
+        uri = "ws://127.0.0.1:8765"
+        self.ws = await  websockets.connect(uri)
+
+    async def get_tts(self):
 
         while True:
-            audio_data = await websocket.recv()
+            audio_data = await self.ws.recv()
             if audio_data == b"END_OF_AUDIO":
                 break
             # Convert bytes to numpy array and scale to int16
@@ -49,6 +48,24 @@ async def connect():
             resampled_array = resampled_frames[0].to_ndarray()
             wf2.writeframes(resampled_array.tobytes())
 
+    async def send_text(self):
+
+        # Send the message to server
+        await self.ws.send("你好啊，你是什么模型")
+        await self.ws.send("型，我需要你帮我检")
+        await self.ws.send("测一下音频中的语")
+        await self.ws.send("音活动")
+        await self.ws.send("END_OF_AUDIO")
+
+
+async def run():
+    client = TtsClient()
+    await client.async_init()
+    await client.send_text()
+
+    await client.get_tts()
+    await client.send_text()
+
 
 if __name__ == "__main__":
-    asyncio.run(connect())
+    asyncio.run(run())

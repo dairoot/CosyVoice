@@ -44,6 +44,7 @@ spk2info = torch.load(spk2info_path, map_location=cosyvoice.frontend.device)
 
 print("spk2info", spk2info.keys())
 
+
 def get_random_string(length):
     letters = string.ascii_lowercase + string.digits + string.ascii_uppercase
     result_str = ''.join(random.choice(letters) for _ in range(length))
@@ -117,12 +118,12 @@ def get_ws_message(websocket):
 
 
 def echo(websocket):
-    for j in tts_sft(get_ws_message(websocket), stream=True, speed=1.2):
-        audio_bytes = j['tts_speech'].numpy().tobytes()
-        websocket.send(audio_bytes)
+    while True:
+        for j in tts_sft(get_ws_message(websocket), stream=True, speed=1.2):
+            audio_bytes = j['tts_speech'].numpy().tobytes()
+            websocket.send(audio_bytes)
 
-
-    websocket.send(b"END_OF_AUDIO")
+        websocket.send(b"END_OF_AUDIO")
 
 
 def main():
